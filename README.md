@@ -1,7 +1,6 @@
 # Fgrep
 
-Greps through FortiManager or FortiGate configurations, and prints matching
-extracts. On Linux, one can put the script in _/usr/local/bin_
+Greps through FortiManager or FortiGate configurations, and prints matching extracts.
 
 ## Examples
 If _config_ contains the match.
