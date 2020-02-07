@@ -1,0 +1,91 @@
+#!/usr/bin/awk -f
+
+function display_cnt(CNT, POS, HEAD, STK) {
+    if (!pnt[POS]) {
+	print CNT
+	pnt[POS] = "y"
+
+	if (STK && !enter[STK] && (HEAD=="config" || HEAD=="edit")) {
+	    enter[STK] = "y"
+	}
+    }
+}
+
+function mark() {
+    len = len + 1
+    type[len] = $1
+    cnt[len]  = $0
+    pos[len]  = FNR
+}
+
+function flush() {
+    delete type[len]
+    delete cnt[len]
+    delete pos[len]
+    delete pnt[len]
+    len = len - 1
+}
+
+function open_trace(cnt, pos, type, i, end) {
+    display_cnt(cnt[i], pos[i], type[i], i)
+
+    if (!pnt[i]) {
+	pnt[i] = "y"
+    }
+    
+    if (i!=end) {
+	open_trace(cnt, pos, type, i+1, end)
+    }
+
+}
+
+function stop_trace(LST) {
+    if (enter[LST] && !leave[LST]) {
+	leave[LST] = "y"
+    }
+
+    return leave[LST]
+}
+
+function display_block(head, mark, idx) {
+    tail = head=="config"? "end" : "next"
+    display_cnt($0, FNR, $1, "")
+    
+    if (index($0,tail)==idx && stop_trace(length(pos))=="y") {
+	flush()
+    }
+
+    if (index($0,tail)!=idx && getline>0) {
+    	display_block(head, mark, idx)
+    } 
+}
+
+/--More--.*\r/ {
+    sub(/--More--.*\r/,"")
+}
+
+$1=="config" || $1=="edit" {
+    mark()
+}
+
+$1=="end" || $1=="next" {
+    head    = ($1=="end"? "config" : "edit")
+    LST_IDX = length(pos)
+    
+    if (index($0,$1)==index(cnt[LST_IDX], head) && pnt[LST_IDX] \
+	&& stop_trace(length(pos))=="y") {
+	display_cnt($0, FNR, $1, "")
+    }
+
+    flush()
+}
+
+$0~key && ($1=="config" || $1=="edit" || $1=="set") {
+    last_idx = index($0,$1)
+    open_trace(cnt, pos, type, 1, length(pos))
+    if ($1=="config" || $1=="edit") {
+	display_block($1, FNR, last_idx)
+    } else if ($1=="set") {
+	display_cnt($0, FNR, $1, "")
+    }
+}
